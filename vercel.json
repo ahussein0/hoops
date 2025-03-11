@@ -7,5 +7,10 @@
         "installCommand": "npm install --legacy-peer-deps"
       }
     }
-  ]
+  ],
+  "env": {
+    "STRIPE_SECRET_KEY": "sk_test_51R1FY2RdAYNrQFsOnpqcIJdbAYwXDdj7xRtXQTsCmFFfB8CKWC5dTgyy0cNF0MHFpd4O5GXhbNMZCOUPOx5HnHGF001RB8kXqn",
+    "STRIPE_PUBLISHABLE_KEY": "pk_test_51R1FY2RdAYNrQFsOBzsuLemKmbvWRYZXyHtl5ohM7Kxj78hiJKazKHDJox4oQ9Hg2vTbrMlxlpL6chPXxxdquXiz007qStbwd4",
+    "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51R1FY2RdAYNrQFsOBzsuLemKmbvWRYZXyHtl5ohM7Kxj78hiJKazKHDJox4oQ9Hg2vTbrMlxlpL6chPXxxdquXiz007qStbwd4"
+  }
 } 
