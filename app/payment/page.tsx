@@ -3,17 +3,14 @@
 import type React from "react"
 
 import { useState } from "react"
-import { loadStripe } from "@stripe/stripe-js"
-import { Elements } from "@stripe/react-stripe-js"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import PaymentForm from "./payment-form"
+import StripeProvider from "./stripe-provider"
 import { useToast } from "@/hooks/use-toast"
 import { recordParticipant } from "@/lib/actions"
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 export default function PaymentPage() {
   const [clientSecret, setClientSecret] = useState("")
@@ -52,9 +49,17 @@ export default function PaymentPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: 2500, name, phone }),
       })
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("API Error:", errorData);
+        throw new Error(errorData.details || "Failed to initialize payment");
+      }
+      
       const data = await response.json()
 
       if (data.clientSecret) {
+        console.log("Client secret received, initializing payment form...");
         setClientSecret(data.clientSecret)
         await recordParticipant(name, phone, "stripe", "pending")
       } else {
@@ -64,7 +69,7 @@ export default function PaymentPage() {
       console.error("Error:", error)
       toast({
         title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
         variant: "destructive",
       })
     }
@@ -85,19 +90,19 @@ export default function PaymentPage() {
                 <Input id="name" name="name" placeholder="John Doe" required />
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 mt-4">
                 <Label htmlFor="phone">Phone Number</Label>
                 <Input id="phone" name="phone" type="tel" placeholder="+1 (555) 123-4567" required />
               </div>
 
-              <Button type="submit" className="w-full mt-4">
+              <Button type="submit" className="w-full mt-6">
                 Proceed to Payment
               </Button>
             </form>
           ) : (
-            <Elements stripe={stripePromise} options={{ clientSecret }}>
+            <StripeProvider clientSecret={clientSecret}>
               <PaymentForm />
-            </Elements>
+            </StripeProvider>
           )}
         </CardContent>
       </Card>
