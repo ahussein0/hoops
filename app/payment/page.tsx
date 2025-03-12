@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,13 +14,28 @@ import { recordParticipant } from "@/lib/actions"
 
 export default function PaymentPage() {
   const [clientSecret, setClientSecret] = useState("")
+  const [paymentIntentId, setPaymentIntentId] = useState("")
   const [amount, setAmount] = useState(2500) // Default amount in cents ($25.00)
   const [isLoading, setIsLoading] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
   const { toast } = useToast()
+
+  // Check URL for payment_intent_client_secret on page load
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const paymentIntentClientSecret = searchParams.get("payment_intent_client_secret");
+    
+    if (paymentIntentClientSecret) {
+      // If we have a client secret in the URL, we're returning from a payment attempt
+      // Redirect to the confirmation page
+      window.location.href = `/payment-confirmation${window.location.search}`;
+    }
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setIsLoading(true)
+    setFormError(null)
     
     try {
       const form = event.currentTarget
@@ -33,6 +48,7 @@ export default function PaymentPage() {
       const amountInCents = Math.round(parseFloat(amountInput) * 100)
       
       if (!name || !phone || !amountInput || isNaN(amountInCents) || amountInCents <= 0) {
+        setFormError("Please fill in all fields with valid values.");
         toast({
           title: "Error",
           description: "Please fill in all fields with valid values.",
@@ -44,6 +60,7 @@ export default function PaymentPage() {
 
       // Ensure minimum amount is at least $5.00 (500 cents)
       if (amountInCents < 500) {
+        setFormError("Minimum payment amount is $5.00.");
         toast({
           title: "Error",
           description: "Minimum payment amount is $5.00.",
@@ -56,6 +73,7 @@ export default function PaymentPage() {
       // Basic phone number validation
       const phoneRegex = /^\+?[1-9]\d{1,14}$/
       if (!phoneRegex.test(phone)) {
+        setFormError("Please enter a valid phone number.");
         toast({
           title: "Error",
           description: "Please enter a valid phone number.",
@@ -79,6 +97,7 @@ export default function PaymentPage() {
       if (!response.ok) {
         const errorData = await response.json();
         console.error("API Error:", errorData);
+        setFormError(errorData.details || "Failed to initialize payment");
         throw new Error(errorData.details || "Failed to initialize payment");
       }
       
@@ -87,12 +106,24 @@ export default function PaymentPage() {
       if (data.clientSecret) {
         console.log("Client secret received, initializing payment form...");
         setClientSecret(data.clientSecret)
+        if (data.paymentIntentId) {
+          setPaymentIntentId(data.paymentIntentId)
+          console.log("Payment intent ID:", data.paymentIntentId);
+        }
         await recordParticipant(name, phone, "stripe", "pending")
+        
+        // Show success toast
+        toast({
+          title: "Payment form ready",
+          description: "Please complete your payment details.",
+          variant: "default",
+        })
       } else {
         throw new Error(data.error || "Failed to initialize payment")
       }
     } catch (error) {
       console.error("Error:", error)
+      setFormError(error instanceof Error ? error.message : "An unexpected error occurred. Please try again.");
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
@@ -143,6 +174,12 @@ export default function PaymentPage() {
                 </div>
                 <p className="text-sm text-gray-500">Enter the amount you'd like to pay (minimum $5.00)</p>
               </div>
+
+              {formError && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+                  {formError}
+                </div>
+              )}
 
               <Button type="submit" className="w-full mt-6" disabled={isLoading}>
                 {isLoading ? "Processing..." : "Proceed to Payment"}

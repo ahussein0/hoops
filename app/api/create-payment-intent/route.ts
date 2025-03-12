@@ -22,6 +22,17 @@ export async function POST(request: Request) {
 
     const { amount, name, phone } = await request.json()
 
+    // Validate the amount
+    if (!amount || isNaN(amount) || amount < 500) {
+      return NextResponse.json({ 
+        error: "Invalid amount", 
+        details: "Amount must be at least $5.00 (500 cents)" 
+      }, { status: 400 })
+    }
+
+    // Create a payment intent with the specified amount
+    console.log(`Creating payment intent for ${name} with amount ${amount} cents`);
+    
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: "usd",
@@ -33,9 +44,18 @@ export async function POST(request: Request) {
         name,
         phone,
       },
+      // Add receipt email if available
+      receipt_email: null, // You can add email collection to your form if needed
+      // Set a description for the payment
+      description: `Ramadan Runs 2025 - ${name}`,
     })
 
-    return NextResponse.json({ clientSecret: paymentIntent.client_secret })
+    console.log(`Payment intent created with ID: ${paymentIntent.id}`);
+
+    return NextResponse.json({ 
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id 
+    })
   } catch (error) {
     console.error("Error creating PaymentIntent:", error)
     return NextResponse.json({ 
