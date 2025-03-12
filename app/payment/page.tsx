@@ -14,44 +14,62 @@ import { recordParticipant } from "@/lib/actions"
 
 export default function PaymentPage() {
   const [clientSecret, setClientSecret] = useState("")
-  const [amount, setAmount] = useState(10) // Default amount in cents ($25.00)
+  const [amount, setAmount] = useState(2500) // Default amount in cents ($25.00)
+  const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const form = event.currentTarget
-    const formData = new FormData(form)
-    const name = formData.get("name") as string
-    const phone = formData.get("phone") as string
-    const amountInput = formData.get("amount") as string
+    setIsLoading(true)
     
-    // Convert amount to cents (e.g., $25.00 -> 2500)
-    const amountInCents = Math.round(parseFloat(amountInput) * 100)
-    
-    if (!name || !phone || !amountInput || isNaN(amountInCents) || amountInCents <= 0) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields with valid values.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Basic phone number validation
-    const phoneRegex = /^\+?[1-9]\d{1,14}$/
-    if (!phoneRegex.test(phone)) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid phone number.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Store the amount for the payment form
-    setAmount(amountInCents)
-
     try {
+      const form = event.currentTarget
+      const formData = new FormData(form)
+      const name = formData.get("name") as string
+      const phone = formData.get("phone") as string
+      const amountInput = formData.get("amount") as string
+      
+      // Convert amount to cents (e.g., $25.00 -> 2500)
+      const amountInCents = Math.round(parseFloat(amountInput) * 100)
+      
+      if (!name || !phone || !amountInput || isNaN(amountInCents) || amountInCents <= 0) {
+        toast({
+          title: "Error",
+          description: "Please fill in all fields with valid values.",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        return
+      }
+
+      // Ensure minimum amount is at least $5.00 (500 cents)
+      if (amountInCents < 500) {
+        toast({
+          title: "Error",
+          description: "Minimum payment amount is $5.00.",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        return
+      }
+
+      // Basic phone number validation
+      const phoneRegex = /^\+?[1-9]\d{1,14}$/
+      if (!phoneRegex.test(phone)) {
+        toast({
+          title: "Error",
+          description: "Please enter a valid phone number.",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        return
+      }
+
+      // Store the amount for the payment form
+      setAmount(amountInCents)
+
+      console.log(`Creating payment intent for $${(amountInCents/100).toFixed(2)}...`);
+      
       const response = await fetch("/api/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,6 +98,8 @@ export default function PaymentPage() {
         description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
         variant: "destructive",
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -114,18 +134,18 @@ export default function PaymentPage() {
                     id="amount" 
                     name="amount" 
                     type="number" 
-                    min="1" 
+                    min="5.00" 
                     step="0.01" 
                     defaultValue="25.00"
                     className="pl-7" 
                     required 
                   />
                 </div>
-                <p className="text-sm text-gray-500">Enter the amount you'd like to pay</p>
+                <p className="text-sm text-gray-500">Enter the amount you'd like to pay (minimum $5.00)</p>
               </div>
 
-              <Button type="submit" className="w-full mt-6">
-                Proceed to Payment
+              <Button type="submit" className="w-full mt-6" disabled={isLoading}>
+                {isLoading ? "Processing..." : "Proceed to Payment"}
               </Button>
             </form>
           ) : (
