@@ -9,26 +9,11 @@ interface StripeProviderProps {
   clientSecret: string
 }
 
+// Initialize Stripe outside the component to avoid re-initialization
+// This is a workaround for the environment variable issue
+const stripePromise = loadStripe("pk_test_51R1FY2RdAYNrQFsOBzsuLemKmbvWRYZXyHtl5ohM7Kxj78hiJKazKHDJox4oQ9Hg2vTbrMlxlpL6chPXxxdquXiz007qStbwd4");
+
 export default function StripeProvider({ children, clientSecret }: StripeProviderProps) {
-  const [stripePromise, setStripePromise] = useState(null)
-
-  useEffect(() => {
-    // Load the publishable key from an environment variable
-    // This ensures the key is loaded on the client side
-    const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-    
-    if (key) {
-      console.log("Stripe key found, initializing Stripe...")
-      setStripePromise(loadStripe(key))
-    } else {
-      console.error("Stripe publishable key not found!")
-    }
-  }, [])
-
-  if (!stripePromise) {
-    return <div>Loading payment system...</div>
-  }
-
   return (
     <Elements stripe={stripePromise} options={{ clientSecret }}>
       {children}
