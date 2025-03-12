@@ -14,6 +14,7 @@ import { recordParticipant } from "@/lib/actions"
 
 export default function PaymentPage() {
   const [clientSecret, setClientSecret] = useState("")
+  const [amount, setAmount] = useState(10) // Default amount in cents ($25.00)
   const { toast } = useToast()
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -22,11 +23,15 @@ export default function PaymentPage() {
     const formData = new FormData(form)
     const name = formData.get("name") as string
     const phone = formData.get("phone") as string
-
-    if (!name || !phone) {
+    const amountInput = formData.get("amount") as string
+    
+    // Convert amount to cents (e.g., $25.00 -> 2500)
+    const amountInCents = Math.round(parseFloat(amountInput) * 100)
+    
+    if (!name || !phone || !amountInput || isNaN(amountInCents) || amountInCents <= 0) {
       toast({
         title: "Error",
-        description: "Please fill in all fields.",
+        description: "Please fill in all fields with valid values.",
         variant: "destructive",
       })
       return
@@ -43,11 +48,14 @@ export default function PaymentPage() {
       return
     }
 
+    // Store the amount for the payment form
+    setAmount(amountInCents)
+
     try {
       const response = await fetch("/api/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: 2500, name, phone }),
+        body: JSON.stringify({ amount: amountInCents, name, phone }),
       })
       
       if (!response.ok) {
@@ -75,6 +83,9 @@ export default function PaymentPage() {
     }
   }
 
+  // Format amount for display in the input field
+  const formattedAmount = (amount / 100).toFixed(2)
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-b from-slate-50 to-slate-100">
       <Card className="w-full max-w-md shadow-lg">
@@ -95,13 +106,31 @@ export default function PaymentPage() {
                 <Input id="phone" name="phone" type="tel" placeholder="+1 (555) 123-4567" required />
               </div>
 
+              <div className="space-y-3 mt-4">
+                <Label htmlFor="amount">Amount ($)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                  <Input 
+                    id="amount" 
+                    name="amount" 
+                    type="number" 
+                    min="1" 
+                    step="0.01" 
+                    defaultValue="25.00"
+                    className="pl-7" 
+                    required 
+                  />
+                </div>
+                <p className="text-sm text-gray-500">Enter the amount you'd like to pay</p>
+              </div>
+
               <Button type="submit" className="w-full mt-6">
                 Proceed to Payment
               </Button>
             </form>
           ) : (
             <StripeProvider clientSecret={clientSecret}>
-              <PaymentForm />
+              <PaymentForm amount={amount} />
             </StripeProvider>
           )}
         </CardContent>
