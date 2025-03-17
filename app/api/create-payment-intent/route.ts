@@ -44,8 +44,6 @@ export async function POST(request: Request) {
         name,
         phone,
       },
-      // Add receipt email if available
-      receipt_email: null, // You can add email collection to your form if needed
       // Set a description for the payment
       description: `Ramadan Runs 2025 - ${name}`,
     })
