@@ -49,6 +49,9 @@ export default function PaymentForm({ amount = 2500 }: PaymentFormProps) {
             });
             // Redirect to confirmation page with payment intent ID
             window.location.href = `/payment-confirmation?payment_intent=${paymentIntent.id}&payment_intent_client_secret=${clientSecret}`;
+            if (paymentIntent.id) {
+              processPayment(paymentIntent.id);
+            }
             break;
           case "processing":
             toast({
